@@ -19,19 +19,76 @@ bool invincible = false;
 void Initialize()
 {
 	player = PLAYER::PLAYER_PED_ID();
+
+	ScriptSettings::load("GuidingWind.ini", new SettingsMap{
+		{"Enabled", 1},
+		{"HintDuration", 5},
+		{"NormalWindSpeed", 15},
+		{"HintWindSpeed", 50}
+	});
 }
 
 void main()
 {
 	WAIT(500);
 	Initialize();
+
+	if (!ScriptSettings::getBool("Enabled"))
+	{
+		return;
+	}
 	
+	bool isActive = false;
+	bool hasTriggeredWindHint = false;
+	float originalWindSpeed = GAMEPLAY::GET_WIND_SPEED();
+
 	while (true)
 	{
 		player = PLAYER::PLAYER_PED_ID();
 		try
 		{
-			//updateUI();
+			bool wasActive = isActive;
+
+			if (RADAR::IS_WAYPOINT_ACTIVE() && !GAMEPLAY::GET_MISSION_FLAG())
+			{
+				isActive = true;
+				float speed = ScriptSettings::get("NormalWindSpeed");
+
+				if (SYSTEM::TIMERA() > 500)
+				{
+					Vector3 pos = playerPos();
+					pos.z = 0;
+					Vector3 direction = pos - RADAR::GET_WAYPOINT_COORDS_3D();
+					float angle = (((atan2(direction.x, direction.y) * 180.0f) / 3.14159265) + 360);
+					int normalized = (int)angle % 360;
+					GAMEPLAY::SET_WIND_DIRECTION(normalized);
+					SYSTEM::SETTIMERA(0);
+				}
+
+				if (CONTROLS::IS_CONTROL_PRESSED(0, GAMEPLAY::GET_HASH_KEY("INPUT_REVEAL_HUD")))
+				{
+					SYSTEM::SETTIMERB(0);
+					hasTriggeredWindHint = true;
+				}
+
+				if (hasTriggeredWindHint) {
+					speed = ScriptSettings::get("HintWindSpeed");
+					
+					if (SYSTEM::TIMERB() > ScriptSettings::get("HintDuration") * 1000)
+					{
+						hasTriggeredWindHint = false;
+						SYSTEM::SETTIMERB(0);
+					}
+				}
+
+				GAMEPLAY::SET_WIND_SPEED(speed);
+			}
+
+			if (wasActive != isActive && isActive == false)
+			{
+				GAMEPLAY::SET_WIND_SPEED(originalWindSpeed);
+			}
+
 		}
 		catch (...)
 		{
@@ -58,11 +115,6 @@ void main()
 
 		if (debugOn)
 		{
-			debug(GAMEPLAY::GET_WIND_SPEED());
-			GAMEPLAY::SET_WIND_DIRECTION(ENTITY::GET_ENTITY_HEADING(player));
-			GAMEPLAY::SET_WIND_SPEED(20);
-			WAIT(7000);
-			GAMEPLAY::SET_WIND_SPEED(4);
 
 			//PLAYER::SET_EVERYONE_IGNORE_PLAYER(PLAYER::PLAYER_ID(), 1);
 
@@ -96,9 +148,6 @@ void main()
 				Entity e;
 				if (PLAYER::GET_ENTITY_PLAYER_IS_FREE_AIMING_AT(PLAYER::PLAYER_ID(), &e) /*&& distanceBetweenEntities(player, e) < 20*/) {
 					if (IsKeyJustUp(VK_KEY_Z)) {
-						int bone;
-						PED::GET_PED_LAST_DAMAGE_BONE(e, &bone);
-						PED::_0xFFD54D9FE71B966A(e, 2, 26043, -.5, -.05, 0, ENTITY::GET_ENTITY_HEADING(e), 5000, -1, 1);
 					}
 				}
 				else
@@ -153,6 +202,17 @@ void main()
 			{
 				Ped ped = createPed("g_m_o_uniexconfeds_01", playerPos() + getForwardVector(player) * rndInt(5, 10), 180);
 				PED::SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(ped, true);
+
+				while (true) {
+					Vector3 direction = playerPos() - entityPos(ped);
+					//float angle = ((acos(direction.x / get_vector_length(direction))) * 180.0f) / 3.14159265;
+					float angle = (((atan2(direction.x, direction.y) * 180.0f) / 3.14159265) + 360);
+					int normalized = (int)angle % 360;
+					debug(normalized);
+					GAMEPLAY::SET_WIND_DIRECTION(normalized);
+					WAIT(0);
+				}
+
 				//ENTITY::SET_PED_AS_NO_LONGER_NEEDED(&ped);
 			}
 
@@ -164,17 +224,6 @@ void main()
 
 			if (IsKeyJustUp(VK_KEY_K))
 			{
-				showSubtitle("3");
-				PED::SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(createPed("g_m_o_uniexconfeds_01", playerPos() + getForwardVector(player) * rndInt(5, 10), 180), true);
-				PLAYER::_0xD04AD186CE8BB129(PLAYER::PLAYER_ID(), GAMEPLAY::GET_HASH_KEY("weapon_revolver_lemat"), 3);
-				WAIT(10000);
-				showSubtitle("5");
-				PED::SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(createPed("g_m_o_uniexconfeds_01", playerPos() + getForwardVector(player) * rndInt(5, 10), 180), true);
-				PLAYER::_0xD04AD186CE8BB129(PLAYER::PLAYER_ID(), GAMEPLAY::GET_HASH_KEY("weapon_revolver_lemat"), 5);
-				WAIT(10000);
-				PED::SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(createPed("g_m_o_uniexconfeds_01", playerPos() + getForwardVector(player) * rndInt(5, 10), 180), true);
-				showSubtitle("100");
-				PLAYER::_0xD04AD186CE8BB129(PLAYER::PLAYER_ID(), GAMEPLAY::GET_HASH_KEY("weapon_revolver_lemat"), 100);
 			}
 		}
 

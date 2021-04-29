@@ -94,10 +94,15 @@ float dotProduct(Vector3 a, Vector3 b)
 
 float angleBetweenVectors(Vector3 a, Vector3 b)
 {
+	//float aLength = (float)sqrt(a.x * a.x + a.y * a.y);
+	//float bLength = (float)sqrt(b.x * b.x + b.y * b.y);
+	//float mult = a.x * b.x + a.y * b.y;
+
 	float aLength = get_vector_length(a);
 	float bLength = get_vector_length(b);
 	float mult = dotProduct(a, b);
-	return acos(mult / (aLength * bLength));
+	float radians = acos(mult / (aLength * bLength));
+	return (radians * 180.0f) / 3.14159265;
 }
 
 Vector3 getForwardVector(Entity entity)
