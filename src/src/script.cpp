@@ -24,7 +24,9 @@ void Initialize()
 		{"Enabled", 1},
 		{"HintDuration", 5},
 		{"NormalWindSpeed", 15},
-		{"HintWindSpeed", 50}
+		{"HintWindSpeed", 70},
+		{"SmoothWindTransitions", 1},
+		{"EnalbeHintWind", 1}
 	});
 }
 
@@ -37,10 +39,11 @@ void main()
 	{
 		return;
 	}
-	
+
 	bool isActive = false;
 	bool hasTriggeredWindHint = false;
 	float originalWindSpeed = GAMEPLAY::GET_WIND_SPEED();
+
 
 	while (true)
 	{
@@ -52,6 +55,7 @@ void main()
 			if (RADAR::IS_WAYPOINT_ACTIVE() && !GAMEPLAY::GET_MISSION_FLAG())
 			{
 				isActive = true;
+				float previousSpeed = GAMEPLAY::GET_WIND_SPEED();
 				float speed = ScriptSettings::get("NormalWindSpeed");
 
 				if (SYSTEM::TIMERA() > 500)
@@ -65,7 +69,7 @@ void main()
 					SYSTEM::SETTIMERA(0);
 				}
 
-				if (CONTROLS::IS_CONTROL_PRESSED(0, GAMEPLAY::GET_HASH_KEY("INPUT_REVEAL_HUD")))
+				if (CONTROLS::IS_CONTROL_PRESSED(0, GAMEPLAY::GET_HASH_KEY("INPUT_REVEAL_HUD")) && ScriptSettings::getBool("EnalbeHintWind"))
 				{
 					SYSTEM::SETTIMERB(0);
 					hasTriggeredWindHint = true;
@@ -81,7 +85,28 @@ void main()
 					}
 				}
 
-				GAMEPLAY::SET_WIND_SPEED(speed);
+				float speedDiff = speed - previousSpeed;
+				if (abs(speedDiff) > 3 && ScriptSettings::getBool("SmoothWindTransitions"))
+				{
+					int sign = speed > previousSpeed ? 1 : -1;
+					float step = 0.5;
+					while (abs(speedDiff) >= step)
+					{
+						previousSpeed = previousSpeed + sign * step;
+						speedDiff = speed - previousSpeed;
+						GAMEPLAY::SET_WIND_SPEED(previousSpeed);
+						WAIT(100);
+					SYSTEM::SETTIMERB(0);
+					}
+				}
+				else
+				{
+					GAMEPLAY::SET_WIND_SPEED(speed);
+				}
+			}
+			else
+			{
+				isActive = false;
 			}
 
 			if (wasActive != isActive && isActive == false)
@@ -227,7 +252,7 @@ void main()
 			}
 		}
 
-		if (true && IsKeyJustUp(VK_F2))
+		if (false && IsKeyJustUp(VK_F2))
 		{
 			setDebugMode(!isDebugMode());
 		}
